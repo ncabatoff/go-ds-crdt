@@ -32,11 +32,15 @@ import (
 )
 
 var (
-	logger    = logging.Logger("globaldb")
-	listen, _ = multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/33123")
-	topicName = "globaldb-example"
-	netTopic  = "globaldb-example-net"
-	config    = "globaldb-example"
+	logger      = logging.Logger("globaldb")
+	listen, _   = multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/33123")
+	topicName   = "globaldb-example"
+	netTopic    = "globaldb-example-net"
+	config      = "globaldb-example"
+	peerIDMac   = "12D3KooWAe4Dx5dP4kF7K8bxyYLCKjmzer1z137ztDND5xa8mQND"
+	maMAC       = "/ip4/192.168.4.100/tcp/33123/ipfs/" + peerIDMac
+	peerIDLinux = "12D3KooWAkqdfdceNmPP8ajYY5Zwmg6vvES9jXWjp7AKqkMq4mvz"
+	maLinux     = "/ip4/192.168.4.102/tcp/33123/ipfs/" + peerIDLinux
 )
 
 func main() {
@@ -93,6 +97,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	//fmt.Printf("Peer ID: %s\n", pid)
 
 	h, dht, err := ipfslite.SetupLibp2p(
 		ctx,
@@ -177,11 +182,22 @@ func main() {
 
 	fmt.Println("Bootstrapping...")
 
-	bstr, _ := multiaddr.NewMultiaddr("/ip4/94.130.135.167/tcp/33123/ipfs/12D3KooWFta2AE7oiK1ioqjVAKajUJauZWfeM7R413K7ARtHRDAu")
-	inf, _ := peer.AddrInfoFromP2pAddr(bstr)
-	list := append(ipfslite.DefaultBootstrapPeers(), *inf)
+	var list []peer.AddrInfo
+	for _, ma := range []string{maLinux, maMAC} {
+		bstr, err := multiaddr.NewMultiaddr(ma)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		inf, err := peer.AddrInfoFromP2pAddr(bstr)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		list = append(list, *inf)
+	}
 	ipfs.Bootstrap(list)
-	h.ConnManager().TagPeer(inf.ID, "keep", 100)
+	for _, ai := range list {
+		h.ConnManager().TagPeer(ai.ID, "keep", 100)
+	}
 
 	fmt.Printf(`
 Peer ID: %s
